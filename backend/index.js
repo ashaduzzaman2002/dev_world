@@ -2,6 +2,8 @@ const express = require('express');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
+const passport = require("passport");
+
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -15,6 +17,10 @@ dotenv.config();
 // Midlleware
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json())
+
+// Passport config
+app.use(passport.initialize())
+require('./config/passport')(passport);
 
 app.use('/api/users', users);
 app.use('/api/profile', profile);
