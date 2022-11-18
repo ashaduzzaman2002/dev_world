@@ -6,7 +6,8 @@ const jtw = require("jsonwebtoken");
 
 // Load Input validation
 
-const validateRegisterInput = require('../validation/register')
+const validateRegisterInput = require('../validation/register');
+const validateLoginInput = require('../validation/login')
 
 // Register
 
@@ -64,42 +65,49 @@ const register = async (req, res) => {
 
 const login = async (req, res) => {
   const { email, password } = req.body;
+  const { errors, isValid } = validateLoginInput(req.body);
 
-  try {
-    const user = await User.findOne({ email: email });
-    if (!user) {
-      res
-        .status(404)
-        .json({ msg: "User doesn't found. Please go to register." });
+  if (!isValid) {
+    res.status(400).json({errors})
+  } else {
+    try {
+      const user = await User.findOne({ email: email });
+      if (!user) {
+        errors.email = `User doesn't found. Please go to register.`
+        res
+          .status(404)
+          .json(errors);
+      }
+  
+      const isMatch = bcrypt.compareSync(password, user.password);
+      if (isMatch) {
+        // User match
+        const payload = {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          avatar: user.avatar,
+        };
+  
+        // Sign the token
+        jtw.sign(
+          payload,
+          process.env.SECRET_KEY,
+          { expiresIn: "2 days" },
+          (err, token) => {
+            res.status(200).json({
+              success: true,
+              token: "Bearer " + token,
+            });
+          }
+        );
+      } else {
+        errors.password = 'Invalid credential';
+        res.status(400).json(errors);
+      }
+    } catch (error) {
+      console.log(error);
     }
-
-    const isMatch = bcrypt.compareSync(password, user.password);
-    if (isMatch) {
-      // User match
-      const payload = {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-      };
-
-      // Sign the token
-      jtw.sign(
-        payload,
-        process.env.SECRET_KEY,
-        { expiresIn: "2 days" },
-        (err, token) => {
-          res.status(200).json({
-            success: true,
-            token: "Bearer " + token,
-          });
-        }
-      );
-    } else {
-      res.status(400).json({ msg: "Invalid credential" });
-    }
-  } catch (error) {
-    console.log(error);
   }
 };
 
